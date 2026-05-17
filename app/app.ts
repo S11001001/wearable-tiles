@@ -12,7 +12,14 @@
   };
 
   // ==================== STATE ====================
-  var state = {
+  var state: {
+    currentScreen: string,
+    screenHistory: string[],
+    isLoading: boolean,
+    error: string | null,
+    data: {},
+    cache: {}
+  } = {
     currentScreen: 'home',
     screenHistory: [],
     isLoading: false,
@@ -22,7 +29,7 @@
   };
 
   // ==================== DOM REFS ====================
-  var screens = {};
+  const screens: {[screenId: string]: Element} = {};
 
   function collectScreens() {
     document.querySelectorAll('.screen').forEach(function(s) {
@@ -31,9 +38,8 @@
   }
 
   // ==================== NAVIGATION ====================
-  function navigateTo(screenId, options) {
-    options = options || {};
-    var addToHistory = options.addToHistory !== false;
+  function navigateTo(screenId: string, options: { addToHistory?: boolean } = {}) {
+    const addToHistory = options.addToHistory !== false;
 
     if (addToHistory && state.currentScreen) {
       state.screenHistory.push(state.currentScreen);
@@ -49,28 +55,31 @@
   }
 
   function navigateBack() {
-    if (state.screenHistory.length > 0) {
-      navigateTo(state.screenHistory.pop(), { addToHistory: false });
+    const last = state.screenHistory.pop();
+    if (last) {
+      navigateTo(last, { addToHistory: false });
     }
   }
 
   // ==================== FOCUS MANAGEMENT ====================
-  function focusFirst(container) {
-    var el = container.querySelector('.focusable:not([disabled]):not(.hidden)');
+  function focusFirst(container: Element) {
+    const el = container.querySelector<HTMLElement>('.focusable:not([disabled]):not(.hidden)');
     if (el) el.focus();
   }
 
-  function moveFocus(direction) {
+  type Focus = 'up' | 'down' | 'left' | 'right';
+
+  function moveFocus(direction: Focus) {
     var container = screens[state.currentScreen];
     if (!container) return;
 
     var focusables = Array.from(
-      container.querySelectorAll('.focusable:not([disabled]):not(.hidden)')
+      container.querySelectorAll<HTMLElement>('.focusable:not([disabled]):not(.hidden)')
     );
     if (focusables.length === 0) return;
 
-    var current = document.activeElement;
-    var idx = focusables.indexOf(current);
+    const current = document.activeElement;
+    const idx = current instanceof HTMLElement ? focusables.indexOf(current) : -1;
 
     if (idx === -1) {
       focusFirst(container);
@@ -83,16 +92,19 @@
     } else {
       nextIdx = idx < focusables.length - 1 ? idx + 1 : 0;
     }
-    focusables[nextIdx].focus();
+    const next = focusables[nextIdx];
+    if (next) {
+      next.focus();
 
-    var scrollParent = focusables[nextIdx].closest('.content, .list-container');
-    if (scrollParent) {
-      focusables[nextIdx].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      var scrollParent = next.closest('.content, .list-container');
+      if (scrollParent) {
+        next.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
     }
   }
 
   // ==================== UI HELPERS ====================
-  function setLoading(isLoading) {
+  function setLoading(isLoading: boolean) {
     state.isLoading = isLoading;
     var spinner = document.getElementById('loading');
     if (spinner) {
@@ -100,7 +112,7 @@
     }
   }
 
-  function setError(message) {
+  function setError(message: string) {
     state.error = message;
     var errorEl = document.getElementById('error');
     if (errorEl) {
@@ -116,7 +128,7 @@
     if (errorEl) errorEl.classList.add('hidden');
   }
 
-  function showToast(message, type) {
+  function showToast(message: string, type: string) {
     var toast = document.getElementById('toast');
     if (!toast) {
       toast = document.createElement('div');
@@ -128,11 +140,11 @@
     toast.className = 'toast' + (type ? ' ' + type : '');
     toast.offsetHeight;
     toast.classList.add('visible');
-    setTimeout(function() { toast.classList.remove('visible'); }, 2500);
+    setTimeout(function() { toast && toast.classList.remove('visible'); }, 2500);
   }
 
-  function renderList(containerId, items, template) {
-    var container = document.getElementById(containerId);
+  function renderList<T>(containerId: string, items: T[], template: (item: T, index: number) => string | Node) {
+    const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
 
@@ -173,7 +185,14 @@
   }
 
   // ==================== ACTION HANDLING ====================
-  function handleAction(action, element) {
+  type Action = 'back' | 'refresh' | AppAction;
+  type AppAction = 'TEST';
+
+  function isAction(action: string): action is Action {
+    return ['back', 'refresh', 'TEST'].includes(action);
+  }
+
+  function handleAction(action: Action, element: unknown) {
     switch (action) {
       case 'back':
         navigateBack();
@@ -188,20 +207,22 @@
   }
 
   // === CUSTOMIZE: Add app-specific actions here ===
-  function handleAppAction(action, element) {
+  function handleAppAction(action: AppAction, element: unknown) {
     console.log('[Action]', action);
   }
 
   // === CUSTOMIZE: Add screen-specific initialization here ===
-  function onScreenEnter(screenId) {
+  function onScreenEnter(screenId: unknown) {
     // Load data, refresh API, etc.
   }
 
   // ==================== EVENT LISTENERS ====================
   function setupEvents() {
     document.addEventListener('click', function(e) {
-      var actionEl = e.target.closest('[data-action]');
-      if (actionEl) handleAction(actionEl.dataset.action, actionEl);
+      if (!(e.target instanceof HTMLElement)) return;
+      const actionEl = e.target.closest<HTMLElement>('[data-action]');
+      const action = actionEl?.dataset['action'];
+      if (action && isAction(action)) handleAction(action, actionEl);
     });
 
     document.addEventListener('keydown', function(e) {
@@ -230,12 +251,14 @@
           e.preventDefault();
           break;
         case 'Enter':
+          const activeElement = document.activeElement;
+          if (!(activeElement instanceof HTMLElement)) break;
           if (isInput) {
-            var submitAction = document.activeElement.dataset.submitAction;
-            if (submitAction) handleAction(submitAction, document.activeElement);
-          } else if (document.activeElement &&
-                     document.activeElement.classList.contains('focusable')) {
-            document.activeElement.click();
+            const submitAction = activeElement.dataset['submitAction'];
+            if (submitAction && isAction(submitAction))
+              handleAction(submitAction, document.activeElement);
+          } else if (activeElement.classList.contains('focusable')) {
+            activeElement.click();
           }
           e.preventDefault();
           break;
