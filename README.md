@@ -12,3 +12,10 @@ Within the app you can configure
 1. Zoom in or out: when checked, separate pages will be used for the set of man tiles and the winds and dragons together.
    Scroll left and right to switch between pages.
    When unchecked, all 17 tiles will be shown on the display at once.
+
+## Credits
+
+- Red dragon tile (`0405中.svg`):
+  By 碧海风 - Own work, [CC BY-SA 4.0][]
+
+[CC BY-SA 4.0]: https://commons.wikimedia.org/w/index.php?curid=70709114
