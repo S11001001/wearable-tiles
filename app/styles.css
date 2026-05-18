@@ -3,6 +3,7 @@
   --bg-secondary: #0a0a0f;
   --bg-tertiary: #14141f;
   --bg-card: #1a1a2e;
+  --bg-tile: #efefef;
   --text-primary: #ffffff;
   --text-secondary: #a0a0b0;
   --text-muted: #606070;
@@ -359,6 +360,12 @@ body {
   outline: none;
 }
 .text-input::placeholder { color: var(--text-muted); }
+
+/* --- Tiles --- */
+.tile-img {
+  background-color: var(--bg-tile);
+  border-radius: var(--radius-md);
+}
 
 /* --- Utility --- */
 .hidden { display: none !important; }
